@@ -912,15 +912,54 @@ footer span{color:var(--amber)}
         <div class="ccard" style="cursor:default"><div class="cic">📍</div><div><div class="clbl">Location</div><div class="cval">Wani, Nagpur, Maharashtra</div></div></div>
       </div>
     </div>
-    <form class="form rv d2" onsubmit="doForm(event)">
+    <form class="form rv d2" id="contactForm" onsubmit="doForm(event)">
+
+      <!-- ── Web3Forms hidden config ── -->
+      <!-- ⚠️  STEP 1: Go to https://web3forms.com, enter contact@akashkamble.in, copy your Access Key -->
+      <!-- ⚠️  STEP 2: Replace YOUR_ACCESS_KEY_HERE below with that key -->
+      <input type="hidden" name="access_key"   value="%%WEB3FORMS_KEY%%"/>
+      <input type="hidden" name="subject"       value="New Portfolio Message — Akash Kamble"/>
+      <input type="hidden" name="from_name"     value="Akash Portfolio"/>
+      <input type="hidden" name="redirect"      value="false"/>
+      <!-- honeypot spam trap -->
+      <input type="checkbox" name="botcheck" style="display:none"/>
+
       <div class="frow">
-        <div class="fg"><label>Name</label><input type="text" placeholder="Jane Smith" required/></div>
-        <div class="fg"><label>Email</label><input type="email" placeholder="jane@company.com" required/></div>
+        <div class="fg">
+          <label>Name</label>
+          <input type="text" name="name" placeholder="Jane Smith" required/>
+        </div>
+        <div class="fg">
+          <label>Email</label>
+          <input type="email" name="email" placeholder="jane@company.com" required/>
+        </div>
       </div>
-      <div class="fg"><label>Subject</label><input type="text" placeholder="DevOps Role / Project Inquiry"/></div>
-      <div class="fg"><label>Message</label><textarea placeholder="Tell me about the opportunity..."></textarea></div>
-      <button type="submit" class="btn-send">Send Message →</button>
-      <div id="fmsg">✓ Message sent! I'll respond within 24 hours.</div>
+      <div class="fg">
+        <label>Subject</label>
+        <input type="text" name="subject_line" placeholder="DevOps Role / Project Inquiry"/>
+      </div>
+      <div class="fg">
+        <label>Message</label>
+        <textarea name="message" placeholder="Tell me about the opportunity..."></textarea>
+      </div>
+
+      <button type="submit" class="btn-send" id="submitBtn">
+        <span id="btnText">Send Message →</span>
+        <span id="btnSpinner" style="display:none">Sending…</span>
+      </button>
+
+      <!-- Success state -->
+      <div id="fmsg" style="display:none;padding:14px 16px;background:rgba(0,210,100,.06);border:1px solid rgba(0,210,100,.2);border-radius:10px;">
+        <div style="font-family:var(--font-mono);font-size:12px;color:#4ade80;margin-bottom:4px">✓ Message delivered!</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3)">I'll reply to your email within 24 hours.</div>
+      </div>
+
+      <!-- Error state -->
+      <div id="ferr" style="display:none;padding:14px 16px;background:rgba(255,60,60,.06);border:1px solid rgba(255,60,60,.2);border-radius:10px;">
+        <div style="font-family:var(--font-mono);font-size:12px;color:#f87171;margin-bottom:4px">✗ Something went wrong</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3)">Please email directly: <a href="mailto:contact@akashkamble.in" style="color:var(--amber)">contact@akashkamble.in</a></div>
+      </div>
+
     </form>
   </div>
 </section>
@@ -1009,13 +1048,58 @@ document.addEventListener('scroll',()=>{
   if(bt)bt.style.transform=`translateY(calc(-50% + ${scrollY*0.12}px))`;
 });
 
-// ── Form
-function doForm(e){
+// ── Web3Forms contact submit
+async function doForm(e){
   e.preventDefault();
-  const m=document.getElementById('fmsg');
-  m.style.display='block';
-  e.target.reset();
-  setTimeout(()=>m.style.display='none',5000);
+  const form   = e.target;
+  const btn    = document.getElementById('submitBtn');
+  const btnTxt = document.getElementById('btnText');
+  const btnSpn = document.getElementById('btnSpinner');
+  const msgOk  = document.getElementById('fmsg');
+  const msgErr = document.getElementById('ferr');
+
+  // Check access key is set
+  const key = form.querySelector('[name="access_key"]').value;
+  if(!key || key === '%%WEB3FORMS_KEY%%'){
+    msgErr.style.display = 'block';
+    msgErr.querySelector('div').textContent = '⚠ Access key not set — see setup instructions in code.';
+    return;
+  }
+
+  // Loading state
+  btn.disabled = true;
+  btnTxt.style.display = 'none';
+  btnSpn.style.display = 'inline';
+  btn.style.opacity = '.7';
+  msgOk.style.display = 'none';
+  msgErr.style.display = 'none';
+
+  try {
+    const data = new FormData(form);
+    const res  = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      body: data
+    });
+    const json = await res.json();
+
+    if(json.success){
+      form.reset();
+      msgOk.style.display = 'block';
+      // auto-hide after 8 seconds
+      setTimeout(()=> msgOk.style.display = 'none', 8000);
+    } else {
+      msgErr.style.display = 'block';
+      console.error('Web3Forms error:', json);
+    }
+  } catch(err){
+    msgErr.style.display = 'block';
+    console.error('Network error:', err);
+  } finally {
+    btn.disabled = false;
+    btnTxt.style.display = 'inline';
+    btnSpn.style.display = 'none';
+    btn.style.opacity = '1';
+  }
 }
 
 // ── Service card mouse glow effect
